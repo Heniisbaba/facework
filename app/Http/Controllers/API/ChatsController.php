@@ -4,10 +4,13 @@ namespace App\Http\Controllers\API;
 
 use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ConversationCollection;
 use Illuminate\Http\Request;
 use App\Message;
 use App\User;
+use Illuminate\Http\Resources\Json\Resource;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class ChatsController extends Controller
@@ -19,8 +22,24 @@ class ChatsController extends Controller
      */
     public function index()
     {
-        $chats = User::where('id','!=',Auth::id())->get(['chat_id','name']);
-        return $chats;
+        $chat_id = auth()->user()->chat_id;
+        // $chats = DB::table('users')
+        //     ->join('profiles', 'users.id', '=', 'profiles.user_id')
+        //     ->join('messages', function ($join) use($chat_id) {
+        //         $join->whereRaw("messages.user_id = users.chat_id AND messages.receiver_id = '{$chat_id}'")
+        //         ->orWhereRaw("messages.user_id = '{$chat_id}' AND messages.receiver_id = users.chat_id")->latest();
+        //     })
+        //     ->select()
+        //     ->where('users.id','!=',Auth::id())->get();
+
+        $chats = User::with(['profile'])->where('id','!=',Auth::id())->whereExists(function ($query) use($chat_id) {
+            $query->from('messages')
+                ->whereRaw("messages.user_id = users.chat_id AND messages.receiver_id = '{$chat_id}'")
+                ->orWhereRaw("messages.user_id = '{$chat_id}' AND messages.receiver_id = users.chat_id");
+        })->get();
+
+        $data = new ConversationCollection($chats);
+        return $data->sortByDesc('date');
     }
     /**
      * Show single chat
@@ -45,7 +64,7 @@ class ChatsController extends Controller
         $chat_id = Auth::user()->chat_id;
 
         $msg = Message::with('sender')->where([['user_id', '=', $other_party], ['receiver_id', '=', $chat_id]])
-            ->orWhere([['receiver_id', '=', $other_party], ['user_id', '=', $chat_id]])->orderBy('id', 'DESC')->paginate(20);
+            ->orWhere([['receiver_id', '=', $other_party], ['user_id', '=', $chat_id]])->orderBy('id')->paginate(20);
 
         return response()->json([
             'data' => new \App\Http\Resources\MessagesResource($msg),

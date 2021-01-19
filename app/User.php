@@ -55,8 +55,6 @@ class User extends Authenticatable implements LikerContract
     public function message(){
         return $this->hasMany('App\Message');
     }
-   
-
 
     protected $dates = ['deleted_at'];
 

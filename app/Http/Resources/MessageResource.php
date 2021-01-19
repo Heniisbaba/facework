@@ -19,7 +19,7 @@ class MessageResource extends JsonResource
             'id' => $this->id,
             'message' => $this->message,
             'created_at' => $this->created_at,
-            'incoming' => $bool ? true : false,
+            'isMine' => $bool ? false : true,
             'sender' => $bool ? [
                 'name' => $this->sender->name
             ] : null,
